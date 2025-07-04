@@ -1,0 +1,12 @@
+fastapi-python:
+    build: ./FastApipythonpv
+    ports:
+      - "8001:8000"
+    environment:
+      - APP_ENV=true
+    restart: unless-stopped
+    
+volumes:
+  postgres_data:
+networks:
+  app-networklesbi:
