@@ -66,7 +66,7 @@ const CriminalRecordEditor = () => {
     dislikes: 'gente que trata kpop com emprego, calor, azeitona, barulho.'
   });
 
-  // Cargar todos los registros al montar el componente
+  // Cargar todos los registros al montar el componente aaaaa
   useEffect(() => {
     loadAllRecords();
   }, []);
