@@ -6,7 +6,7 @@ on:
 
 env:
   AWS_REGION: "us-east-1"
-  ECR_REPOSITORY: "test-ecs"
+  ECR_REPOSITORY: "test-ecs"a
   ECS_CLUSTER: "test-ecs"
   ECS_SERVICE: "test-ecs"
   ECS_TASK_DEFINITION: "test-ecs"  # Nombre de tu task definition (no necesita .json)
