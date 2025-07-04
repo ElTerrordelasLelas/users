@@ -1,19 +1,53 @@
-name: Docker Image CI
+name: Deploy to ECS with OIDC
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+
+env:
+  AWS_REGION: "us-east-1"
+  ECR_REPOSITORY: "test-ecs"
+  ECS_CLUSTER: "test-ecs"
+  ECS_SERVICE: "test-ecs"
+  ECS_TASK_DEFINITION: "test-ecs"  # Nombre de tu task definition (no necesita .json)
+  DOCKERFILE_PATH: "/FastApipythonpv"
+
+permissions:
+  id-token: write  # Necesario para OIDC
+  contents: read   # Para clonar el repo
 
 jobs:
-
-  build:
-
+  deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
-aa
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Autenticación con OIDC (usando tu ARN)
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::586308081711:role/github-actions-ecs-role
+          role-session-name: GitHubActions-${{ github.run_id }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, push image
+        run: |
+          cd ${{ env.DOCKERFILE_PATH }}
+          docker build -t ${{ env.ECR_REPOSITORY }} .
+          docker tag ${{ env.ECR_REPOSITORY }}:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true
