@@ -1,20 +1,15 @@
-name: Deploy to ECS with OIDC
+name: Deploy to AWS ECS Fargate
 
 on:
   push:
     branches: [ "main" ]
 
 env:
-  AWS_REGION: "us-east-1"
-  ECR_REPOSITORY: "test-ecs"
-  ECS_CLUSTER: "test-ecs"
-  ECS_SERVICE: "test-ecs"
-  ECS_TASK_DEFINITION: "test-ecs"  # Nombre de tu task definition (no necesita .json)
-  DOCKERFILE_PATH: "/FastApipythonpv"
-
-permissions:
-  id-token: write  # Necesario para OIDC
-  contents: read   # Para clonar el repo
+  AWS_REGION: "us-east-1"                   # Reemplaza con tu región
+  ECR_REPOSITORY: "mi-repositorio-ecr"      # Nombre de tu repositorio en ECR
+  ECS_CLUSTER: "mi-cluster-ecs"             # Nombre del cluster ECS
+  ECS_SERVICE: "mi-servicio-ecs"            # Nombre del servicio ECS
+  ECS_TASK_DEFINITION: "mi-task-def"        # Nombre de la task definition (sin extensión .json)
 
 jobs:
   deploy:
@@ -22,28 +17,31 @@ jobs:
     environment: production
 
     steps:
+      # 1. Clonar el código
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Autenticación con OIDC (usando tu ARN)
+      # 2. Configurar credenciales de AWS (USAR SECRETS!)
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: arn:aws:iam::586308081711:role/github-actions-ecs-role
-          role-session-name: GitHubActions-${{ github.run_id }}
 
+      # 3. Login a ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      # 4. Construir y subir la imagen Docker
       - name: Build, tag, push image
         run: |
-          cd ${{ env.DOCKERFILE_PATH }}
           docker build -t ${{ env.ECR_REPOSITORY }} .
           docker tag ${{ env.ECR_REPOSITORY }}:latest ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
 
+      # 5. Desplegar en ECS Fargate
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
